@@ -5,6 +5,6 @@
 covid/.ipynb_checkpoints/
 covid/__pycache__/
 covid/old/
-data/.DS_Store
+data/*
 __pycache__/
 __pycache_-

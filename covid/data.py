@@ -1,98 +1,100 @@
-import requests
+from datetime import datetime
 import pandas as pd
 import numpy as np
 import arviz as az
-
-idx = pd.IndexSlice
-
-
-def get_raw_covidtracking_data():
-    """ Gets the current daily CSV from COVIDTracking """
-    url = "https://covidtracking.com/api/v1/states/daily.csv"
-    data = pd.read_csv(url)
-    return data
+import re
 
 
-def process_covidtracking_data(data: pd.DataFrame, run_date: pd.Timestamp):
-    """ Processes raw COVIDTracking data to be in a form for the GenerativeModel.
-        In many cases, we need to correct data errors or obvious outliers."""
-    data = data.rename(columns={"state": "region"})
-    data["date"] = pd.to_datetime(data["date"], format="%Y%m%d")
-    data = data.set_index(["region", "date"]).sort_index()
-    data = data[["positive", "total"]]
+def get_tx_covid_data():
+    ''' Download and parse Covid cases and test data from Texas
+        Dept of Health
 
-    # Too little data or unreliable reporting in the data source.
-    data = data.drop(["MP", "GU", "AS", "PR", "VI"])
+        Returns
+        --------
+        new_cases (pd.DataFrame) : Daily new cases by county
+        new_tests (pd.DataFrame) : Daily new tests by county
+        tx_data (pd.DataFrame) : Texas-wide data from Covid tracking project
+    '''
+    # Get raw case and test data
+    county_cases = pd.read_excel(
+        io='https://dshs.texas.gov/coronavirus/TexasCOVID19DailyCountyCaseCountData.xlsx',
+        skiprows=2,
+        nrows=254, 
+        index_col=0
+    )
+    county_tests = pd.read_excel(
+        io='https://dshs.texas.gov/coronavirus/TexasCOVID-19CumulativeTestsOverTimebyCounty.xlsx',
+        skiprows=1,
+        nrows=254, 
+        index_col=0,
+    )
+    
+    # Get Texas-wide data from covid tracking project
+    tx_data = pd.read_csv('https://covidtracking.com/api/v1/states/tx/daily.csv')
+    tx_data = tx_data.set_index(
+        tx_data['date'].map(
+            lambda x: datetime.strptime(str(x), '%Y%m%d'))
+    ).sort_index()
 
-    # On Jun 5 Covidtracking started counting probable cases too
-    # which increases the amount by 5014.
-    # https://covidtracking.com/screenshots/MI/MI-20200605-184320.png
-    data.loc[idx["MI", pd.Timestamp("2020-06-05") :], "positive"] -= 5014
+    # Drop population column and parse date headers
+    if 'Population' in county_cases.columns:
+        county_cases = county_cases.drop('Population', axis=1)
 
-    # From CT: On June 19th, LDH removed 1666 duplicate and non resident cases
-    # after implementing a new de-duplicaton process.
-    data.loc[idx["LA", pd.Timestamp("2020-06-19") :], :] += 1666
+    if county_cases.columns.dtype == 'O':
+        county_cases.columns = [datetime.strptime(
+                        '2020-'+re.search(r'[\r\n\s]+([\d\-]+)', c)[1],
+                        '%Y-%m-%d'
+                    )
+                    for c in county_cases.columns]
 
-    # Now work with daily counts
-    data = data.diff().dropna().clip(0, None).sort_index()
+    if county_tests.columns.dtype == 'O':
+        county_tests.columns = [
+            datetime.strptime(
+                '2020 ' + re.search(r'Tests Through ([\w\s]+)', c)[1],
+                '%Y %B %d'
+            )
+            for c in county_tests.columns
+        ]
 
-    # Michigan missed 6/18 totals and lumped them into 6/19 so we've
-    # divided the totals in two and equally distributed to both days.
-    data.loc[idx["MI", pd.Timestamp("2020-06-18")], "total"] = 14871
-    data.loc[idx["MI", pd.Timestamp("2020-06-19")], "total"] = 14871
+    # Get daily difference for new case counts
+    new_cases = county_cases.diff(axis=1)
 
-    # Note that when we set total to zero, the model ignores that date. See
-    # the likelihood function in GenerativeModel.build
+    # Drop dates with missing or nonsense values
+    BAD_TEST_DATES = [
+        pd.Timestamp('2020-05-01'),
+        pd.Timestamp('2020-05-03'),
+        pd.Timestamp('2020-05-05'),
+        pd.Timestamp('2020-05-23'),
+        pd.Timestamp('2020-06-03'),
+        pd.Timestamp('2020-06-10'),
+        pd.Timestamp('2020-06-12'),
+        pd.Timestamp('2020-07-16'),
+    ]
 
-    # Huge outlier in NJ causing sampling issues.
-    data.loc[idx["NJ", pd.Timestamp("2020-05-11")], :] = 0
+    county_tests = county_tests.drop(BAD_TEST_DATES, axis=1)
+    new_tests = county_tests.diff(axis=1)
 
-    # Huge outlier in CA causing sampling issues.
-    data.loc[idx["CA", pd.Timestamp("2020-04-22")], :] = 0
+    # Drop April 21 as there is no prior data
+    new_tests = new_tests.drop(pd.Timestamp('2020-04-21'), axis=1)
 
-    # Huge outlier in CA causing sampling issues.
-    # TODO: generally should handle when # tests == # positives and that
-    # is not an indication of positive rate.
-    data.loc[idx["SC", pd.Timestamp("2020-06-26")], :] = 0
+    new_tests = pd.concat([
+        new_tests,
+        pd.DataFrame(columns=BAD_TEST_DATES, dtype='float64')
+    ])
+    new_tests = new_tests.sort_index(axis=1)
 
-    # Two days of no new data then lumped sum on third day with lack of new total tests
-    data.loc[idx["OR", pd.Timestamp("2020-06-26") : pd.Timestamp("2020-06-28")], 'positive'] = 174
-    data.loc[idx["OR", pd.Timestamp("2020-06-26") : pd.Timestamp("2020-06-28")], 'total'] = 3296
+    # Drop negative values and linearly interpolate
+    new_tests[new_tests < 0] = np.nan
+    new_tests = new_tests.interpolate(
+        method='time', axis=1)
 
+    # Fixing known errors in Bexar test reporting
+    # Generative model ignores days with zero tests
+    new_cases.loc['Bexar', pd.Timestamp('2020-07-15')] = 0
+    new_tests.loc['Bexar', pd.Timestamp('2020-07-15')] = 0
+    new_cases.loc['Bexar', pd.Timestamp('2020-07-17')] = 691
 
-    #https://twitter.com/OHdeptofhealth/status/1278768987292209154
-    data.loc[idx["OH", pd.Timestamp("2020-07-01")], :] = 0
-
-    # Nevada didn't report total tests this day
-    data.loc[idx["NV", pd.Timestamp("2020-07-02")], :] = 0
-
-    # A bunch of incorrect values for WA data so nulling them out.
-    data.loc[idx["WA", pd.Timestamp("2020-06-05") : pd.Timestamp("2020-06-07")], :] = 0
-    data.loc[idx["WA", pd.Timestamp("2020-06-20") : pd.Timestamp("2020-06-21")], :] = 0
-
-    # Outlier dates in PA
-    data.loc[
-        idx[
-            "PA",
-            [
-                pd.Timestamp("2020-06-03"),
-                pd.Timestamp("2020-04-21"),
-                pd.Timestamp("2020-05-20"),
-            ],
-        ],
-        :,
-    ] = 0
-
-    # At the real time of `run_date`, the data for `run_date` is not yet available!
-    # Cutting it away is important for backtesting!
-    return data.loc[idx[:, :(run_date - pd.DateOffset(1))], ["positive", "total"]]
-
-
-def get_and_process_covidtracking_data(run_date: pd.Timestamp):
-    """ Helper function for getting and processing COVIDTracking data at once """
-    data = get_raw_covidtracking_data()
-    data = process_covidtracking_data(data, run_date)
-    return data
+    return new_cases, new_tests, tx_data
 
 
 def summarize_inference_data(inference_data: az.InferenceData):
