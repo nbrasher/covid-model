@@ -39,12 +39,12 @@ if __name__ == '__main__':
     TX_DATA_END = pd.Timestamp('2020-04-21')
     LAST_DAY = max(new_cases.columns[-1], new_tests.columns[-1])
 
-    print('County exists through', LAST_DAY.date())
+    print('County data exists through', LAST_DAY.date())
     print('Covid tracking project data exists through', tx_data.index[-1].date())
     
-    # if (LAST_DAY.date() < datetime.today().date()
-    # ) | (tx_data.index[-1].date() < datetime.today().date()):
-    #     raise RuntimeError('Stopping for now, re-run when data is up-to-date')
+    if (LAST_DAY.date() < datetime.today().date()
+    ) | (tx_data.index[-1].date() < datetime.today().date()):
+        raise RuntimeError('Stopping for now, re-run when data is up-to-date')
     
     print('Running updates...')
     for region, counties in METROS.items():

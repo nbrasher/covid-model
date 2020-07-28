@@ -8,13 +8,18 @@ conda activate texas_covid
 cd "$(dirname $BASH_SOURCE)"
 cd ".."
 
-# Run notebook with updated data
-mv data/final_results.pkl data/old_results.pkl
-python scripts/process_data.py
+# Avoid over-writing old results if they exist
+FILE=data/final_results.pkl
+if test -f "$FILE"; then
+    mv "$FILE" data/old_results.pkl
+fi
 
-# Upload to S3
-aws s3 cp data/final_results.pkl s3://texas-covid --profile personal
+# Run updates, upload and re-start site if successful
+if python scripts/process_data.py; then
+    # Upload to S3
+    aws s3 cp data/final_results.pkl s3://texas-covid
 
-# Re-load site
-cd "../texas_covid"
-heroku run "/app/scripts/restart.sh"
+    # Re-load site
+    cd "../texas_covid"
+    heroku run "/app/scripts/restart.sh"
+fi
