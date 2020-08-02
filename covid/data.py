@@ -69,6 +69,7 @@ def get_tx_covid_data():
         pd.Timestamp('2020-06-10'),
         pd.Timestamp('2020-06-12'),
         pd.Timestamp('2020-07-16'),
+        pd.Timestamp('2020-07-28'),
     ]
 
     county_tests = county_tests.drop(BAD_TEST_DATES, axis=1)
