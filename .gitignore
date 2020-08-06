@@ -8,3 +8,4 @@ covid/old/
 data/*
 __pycache__/
 __pycache_-
+*.json

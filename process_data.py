@@ -6,6 +6,7 @@ import pickle
 import numpy as np
 import pandas as pd
 from datetime import datetime
+from google.cloud.storage import Client
 
 sys.path.append('.')
 from covid.models.generative import GenerativeModel
@@ -13,16 +14,21 @@ from covid.data import get_tx_covid_data, summarize_inference_data
 
 # Group county data into metro areas:
 METROS = {
-    'Houston': ['Harris', 'Montgomery', 'Fort Bend', 'Brazoria', 'Galveston'],
-    'DFW': ['Dallas', 'Tarrant', 'Collin', 'Denton'],
-    'Austin': ['Travis', 'Williamson'],
-    'San Antonio': ['Bexar'],
-    'San Marcos': ['Hays'],
-    'El Paso': ['El Paso'],
-    'Rio Grande Valley': ['Hidalgo', 'Cameron'],
+    # 'Houston': ['Harris', 'Montgomery', 'Fort Bend', 'Brazoria', 'Galveston'],
+    # 'DFW': ['Dallas', 'Tarrant', 'Collin', 'Denton'],
+    # 'Austin': ['Travis', 'Williamson'],
+    # 'San Antonio': ['Bexar'],
+    # 'San Marcos': ['Hays'],
+    # 'El Paso': ['El Paso'],
+    # 'Rio Grande Valley': ['Hidalgo', 'Cameron'],
     'Lubbock': ['Lubbock'],
 }
 
+# Output file, bucket and credntial file names
+OUT_FILE = 'final_results.pkl'
+OUT_FOLDER = 'data'
+BUCKET = 'texas-covid.appspot.com'
+CRED_FILE = 'texas-covid-4c3d5d530582.json'
 
 if __name__ == '__main__':
     # Read in raw Daily data
@@ -42,9 +48,9 @@ if __name__ == '__main__':
     print('County data exists through', LAST_DAY.date())
     print('Covid tracking project data exists through', tx_data.index[-1].date())
     
-    if (LAST_DAY.date() < datetime.today().date()
-    ) | (tx_data.index[-1].date() < datetime.today().date()):
-        raise RuntimeError('Stopping for now, re-run when data is up-to-date')
+    # if (LAST_DAY.date() < datetime.today().date()
+    # ) | (tx_data.index[-1].date() < datetime.today().date()):
+    #     raise RuntimeError('Stopping for now, re-run when data is up-to-date')
     
     print('Running updates...')
     for region, counties in METROS.items():
@@ -84,5 +90,13 @@ if __name__ == '__main__':
 
     # Add model run timestamp and save data
     results['timestamp'] = datetime.now()
-    with open(os.path.join('data', 'final_results.pkl'), 'wb') as f:
+    with open(os.path.join(OUT_FOLDER, OUT_FILE), 'wb') as f:
         pickle.dump(results, f)
+    
+    # Send to google cloud storage
+    print('Writing results file to cloud storage...', end='', flush=True)
+    bucket = Client.from_service_account_json(CRED_FILE).bucket(BUCKET)
+    bucket.blob(OUT_FILE).upload_from_filename(
+        os.path.join(OUT_FOLDER, OUT_FILE)
+    )
+    print('complete')
