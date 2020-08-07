@@ -26,4 +26,4 @@ WORKDIR $APP_HOME
 COPY . ./
 
 # Run the model training script on startup
-CMD exec python process_data.py
+CMD exec python main.py
