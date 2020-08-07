@@ -47,9 +47,8 @@ if __name__ == '__main__':
     print('County data exists through', LAST_DAY.date())
     print('Covid tracking project data exists through', tx_data.index[-1].date())
     
-    if (LAST_DAY.date() < datetime.today().date()
-    ) | (tx_data.index[-1].date() < datetime.today().date()):
-        raise RuntimeError('Stopping for now, re-run when data is up-to-date')
+    if (LAST_DAY.date() != tx_data.index[-1].date()):
+        raise RuntimeError('Date mismatch, re-run when data is up-to-date')
     
     print('Running updates...')
     for region, counties in METROS.items():
