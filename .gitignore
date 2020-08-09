@@ -5,6 +5,7 @@
 covid/.ipynb_checkpoints/
 covid/__pycache__/
 covid/old/
-data/*
+*.pkl
 __pycache__/
 __pycache_-
+*.json

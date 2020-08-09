@@ -1,0 +1,13 @@
+.DS_Store
+.ipynb_checkpoints/
+.vscode/
+.idea/
+.github/
+.git/
+covid/.ipynb_checkpoints/
+covid/__pycache__/
+covid/old/
+__pycache__/
+__pycache_-
+*.json
+*.pkl
