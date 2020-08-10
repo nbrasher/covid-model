@@ -5,7 +5,8 @@ import sys
 import pickle
 import numpy as np
 import pandas as pd
-from datetime import datetime, timezone
+from pytz import timezone
+from datetime import datetime
 from google.cloud.storage import Client
 
 sys.path.append('.')
@@ -87,7 +88,7 @@ if __name__ == '__main__':
         print('\n')
 
     # Add model run timestamp and save data
-    results['timestamp'] = datetime.now(timezone.utc).astimezone()
+    results['timestamp'] = datetime.now(timezone('US/Central'))
     with open(os.path.join(OUT_FOLDER, OUT_FILE), 'wb') as f:
         pickle.dump(results, f)
     

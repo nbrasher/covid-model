@@ -2,5 +2,6 @@ google-cloud-storage==1.30.0
 numpy==1.19.0
 pandas==1.0.5
 pymc3==3.9.2
+pytz
 scipy==1.5.0
-xlrd==1.2.0
+xlrd
