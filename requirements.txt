@@ -4,4 +4,5 @@ pandas==1.0.5
 pymc3==3.9.2
 pytz
 scipy==1.5.0
+xarray==0.16.0
 xlrd

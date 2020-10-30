@@ -28,7 +28,12 @@ def get_tx_covid_data():
         nrows=254, 
         index_col=0,
     )
-    
+    county_tests2 = pd.read_excel(
+        io='https://dshs.texas.gov/coronavirus/TexasCOVID-19CumulativeTestsbyCounty.xlsx',
+        skiprows=1,
+        nrows=254, 
+        index_col=0,
+    )
     # Get Texas-wide data from covid tracking project
     tx_data = pd.read_csv('https://covidtracking.com/api/v1/states/tx/daily.csv')
     tx_data = tx_data.set_index(
@@ -55,6 +60,8 @@ def get_tx_covid_data():
             )
             for c in county_tests.columns
         ]
+    county_tests = pd.concat([county_tests, county_tests2], axis=1)
+
 
     # Get daily difference for new case counts
     new_cases = county_cases.diff(axis=1)
