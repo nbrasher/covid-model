@@ -1,5 +1,5 @@
 # Official Ubuntu image
-FROM python:3.7
+FROM python:3.8
 
 # Allow statements and log messages to immediately appear in the Cloud Run logs
 ENV PYTHONUNBUFFERED True
