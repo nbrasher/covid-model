@@ -1,4 +1,4 @@
-google-cloud-storage>=1.30.0
+google-cloud-firestore==2.0.2
 numpy>=1.19.0
 pandas>=1.1
 pymc3==3.11.0

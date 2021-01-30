@@ -1,8 +1,10 @@
+from google.cloud import firestore
 from datetime import datetime
 import pandas as pd
 import numpy as np
 import arviz as az
 import warnings
+import time
 import re
 
 warnings.simplefilter("ignore", category=FutureWarning)
@@ -129,6 +131,7 @@ def summarize_inference_data(inference_data: az.InferenceData):
 
     summary = pd.DataFrame(
         data={
+            "date": posterior.date.values,
             "mean": posterior.r_t.mean(["draw", "chain"]),
             "median": posterior.r_t.median(["chain", "draw"]),
             f"lower_{hdi_mass}": hpdi[:, 0],
@@ -145,7 +148,18 @@ def summarize_inference_data(inference_data: az.InferenceData):
             ),
             "positive": observed_positive,
             "tests": tests,
-        },
-        index=pd.Index(posterior.date.values, name="date"),
+        }
     )
     return summary
+
+
+def to_firestore(doc: str, key: str, df: pd.DataFrame):
+    """ Upload model results to Cloud Firestore
+    """
+    db = firestore.Client()
+    doc_ref = db.collection("model-results").document(doc)
+
+    if not doc_ref.get().exists:
+        doc_ref.create({"timestamp": time.time()})
+
+    doc_ref.update({key: df.to_dict(orient="records")})
