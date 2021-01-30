@@ -1,8 +1,14 @@
+# Forked from https://github.com/rtcovidlive/
+
 import os
 from scipy import stats as sps
 import numpy as np
 import pandas as pd
 import requests
+
+
+def is_ten_char(s: str) -> bool:
+    return len(s) == 10
 
 
 def download_patient_data(file_path=None):
@@ -43,7 +49,6 @@ def get_patient_data(file_path=None, max_delay=60):
 
     # Must have strings that look like individual dates
     # "2020.03.09" is 10 chars long
-    is_ten_char = lambda x: x.str.len().eq(10)
     patients = patients[is_ten_char(patients.Confirmed) & is_ten_char(patients.Onset)]
 
     # Convert both to datetimes

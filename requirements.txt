@@ -1,8 +1,8 @@
-google-cloud-storage==1.30.0
-numpy==1.19.0
-pandas==1.0.5
-pymc3==3.9.2
+google-cloud-storage>=1.30.0
+numpy>=1.19.0
+pandas>=1.1
+pymc3==3.11.0
 pytz
-scipy==1.5.0
-xarray==0.16.0
-xlrd
+scipy
+xarray
+xlrd==1.2.0

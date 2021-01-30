@@ -7,3 +7,7 @@ For raw case count data go to the [Texas DSHS](https://dshs.texas.gov/coronaviru
 In order to run the model locally:
 1. Install requirements with `pip install -r requirements.txt`
 1. Launch the model with `python main.py`
+
+To run the model locally with Docker:
+1. Build the image with `docker build -t covid-model .`
+1. Run the image with `docker run -it covid-model`
