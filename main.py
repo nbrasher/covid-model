@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 import numpy as np
 import pandas as pd
@@ -12,14 +13,14 @@ logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
 # Group county data into metro areas:
 METROS = {
-    "Houston": ["Harris", "Montgomery", "Fort Bend", "Brazoria", "Galveston"],
-    "DFW": ["Dallas", "Tarrant", "Collin", "Denton"],
-    "Austin": ["Travis", "Williamson"],
-    "San Antonio": ["Bexar"],
-    "San Marcos": ["Hays"],
-    "El Paso": ["El Paso"],
-    "Rio Grande Valley": ["Hidalgo", "Cameron"],
-    "Lubbock": ["Lubbock"],
+    "houston": ["Harris", "Montgomery", "Fort Bend", "Brazoria", "Galveston"],
+    "dallas_fort_worth": ["Dallas", "Tarrant", "Collin", "Denton"],
+    "austin": ["Travis", "Williamson"],
+    "san_antonio": ["Bexar"],
+    "san_marcos": ["Hays"],
+    "el_paso": ["El Paso"],
+    "rio_grande_valley": ["Hidalgo", "Cameron"],
+    "lubbock": ["Lubbock"],
 }
 
 
@@ -69,7 +70,9 @@ def main():
 
         gm = GenerativeModel(region, df.loc[:LAST_DAY])
         gm.sample()
-        to_firestore(fs_doc, region, summarize_inference_data(gm.inference_data))
+        to_firestore(fs_doc, {region: summarize_inference_data(gm.inference_data)})
+
+    to_firestore(fs_doc, {"updated": time.time()})
 
 
 if __name__ == "__main__":

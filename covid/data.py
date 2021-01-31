@@ -150,16 +150,16 @@ def summarize_inference_data(inference_data: az.InferenceData):
             "tests": tests,
         }
     )
-    return summary
+    return summary.to_dict(orient="list")
 
 
-def to_firestore(doc: str, key: str, df: pd.DataFrame):
+def to_firestore(doc: str, data: dict):
     """ Upload model results to Cloud Firestore
     """
-    db = firestore.Client()
+    db = firestore.Client(project="texas-covid")
     doc_ref = db.collection("model-results").document(doc)
 
     if not doc_ref.get().exists:
-        doc_ref.create({"timestamp": time.time()})
+        doc_ref.create({"created": time.time()})
 
-    doc_ref.update({key: df.to_dict(orient="records")})
+    doc_ref.update(data)
