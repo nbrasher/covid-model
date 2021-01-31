@@ -150,7 +150,7 @@ def summarize_inference_data(inference_data: az.InferenceData):
             "tests": tests,
         }
     )
-    return summary.to_dict(orient="list")
+    return summary.to_dict(orient="records")
 
 
 def to_firestore(doc: str, data: dict):
